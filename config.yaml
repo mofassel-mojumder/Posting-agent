@@ -1,0 +1,32 @@
+# Posting Agent v1 - config
+# No token or password in this file. Tokens live only in .env
+timezone: Asia/Dhaka
+slots:
+  - "14:00"
+  - "20:00"
+max_posts_per_day: 2
+delay_between_destinations_seconds:
+  min: 60
+  max: 120
+dry_run: true
+destinations:
+  facebook_page:
+    enabled: true
+    mode: auto
+    name: "Facebook Page Mofassel Mojumder"
+    api: meta_graph
+  instagram:
+    enabled: true
+    mode: auto
+    name: "Instagram @mofassel.mojumder"
+    api: meta_graph
+  facebook_personal:
+    enabled: true
+    mode: manual
+    name: "Personal Facebook profile"
+    api: none
+  linkedin_personal:
+    enabled: true
+    mode: manual
+    name: "LinkedIn personal profile"
+    api: none

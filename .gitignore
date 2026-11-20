@@ -1,0 +1,6 @@
+.env
+logs/
+inbox/*/status.json
+__pycache__/
+*.pyc
+scheduler.state

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Posting Agent - Mofassel</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111111; color: #EDEEE9; font-family: Arial, sans-serif; }
+  header { background: #D3EF3A; color: #111111; padding: 16px 20px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; font-size: 14px; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .card { background: #1c1c1c; border: 1px solid #333; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  h2 { color: #D3EF3A; margin-top: 0; font-size: 18px; }
+  button { background: #D3EF3A; color: #111111; border: 0; border-radius: 6px; padding: 10px 16px; font-weight: bold; cursor: pointer; margin-right: 8px; }
+  button.stop { background: #EDEEE9; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #D3EF3A; color: #111111; font-weight: bold; }
+  .badge.manual { background: #EDEEE9; }
+  .badge.failed { background: #ff6b6b; color: #111; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { border-bottom: 1px solid #333; padding: 8px 4px; text-align: left; vertical-align: top; }
+  code { background: #111; color: #D3EF3A; padding: 2px 6px; border-radius: 4px; }
+  .note { color: #aaa; font-size: 13px; }
+  label { display: block; margin: 10px 0 4px; font-weight: bold; font-size: 14px; }
+  input[type="file"], input[type="date"], input[type="text"], select, textarea { width: 100%; background: #111; color: #EDEEE9; border: 1px solid #555; border-radius: 6px; padding: 10px; font-size: 14px; }
+  textarea { min-height: 90px; resize: vertical; }
+  .dest { display: block; margin: 4px 0; font-weight: normal; }
+  .dest input { width: auto; margin-right: 8px; }
+  #uploadMsg { margin-top: 10px; font-weight: bold; }
+  pre { background: #000; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 260px; overflow-y: auto; }
+  a { color: #D3EF3A; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Posting Agent v1</h1>
+  <p>Post korar agent - tumi content dibe, agent 2 PM ar 8 PM e post korbe</p>
+</header>
+<main>
+  <div class="card">
+    <h2>Add new post - Notun post dao</h2>
+    <p class="note">Chobi ba video upload koro, caption likho, somoy bachho, Upload chap dio. Folder banate hobe na, agent nije inbox e sajiye rakhbe.</p>
+    <form id="uploadForm">
+      <label for="media">Chobi ba video (picture or video)</label>
+      <input type="file" id="media" name="media" accept="image/*,video/*" required>
+      <label for="caption">Caption</label>
+      <textarea id="caption" name="caption" placeholder="Caption ekhane likho" required></textarea>
+      <label for="date">Date (tarikh)</label>
+      <input type="date" id="date" name="date" required>
+      <label for="slot">Time (somoy)</label>
+      <select id="slot" name="slot">
+        <option value="14:00">2 PM (14:00)</option>
+        <option value="20:00">8 PM (20:00)</option>
+      </select>
+      <label>Jayga (destinations)</label>
+      <label class="dest"><input type="checkbox" name="destinations" value="facebook_page" checked> Facebook Page Mofassel Mojumder</label>
+      <label class="dest"><input type="checkbox" name="destinations" value="instagram" checked> Instagram @mofassel.mojumder</label>
+      <label class="dest"><input type="checkbox" name="destinations" value="facebook_personal" checked> Personal Facebook</label>
+      <label class="dest"><input type="checkbox" name="destinations" value="linkedin_personal" checked> LinkedIn</label>
+      <label for="media_url">Media public URL (optional, Instagram er jonno lagte pare)</label>
+      <input type="text" id="media_url" name="media_url" placeholder="https://example.com/photo.jpg">
+      <br><br>
+      <button type="submit">Upload</button>
+    </form>
+    <p id="uploadMsg"></p>
+  </div>
+
+  <div class="card">
+    <h2>Control</h2>
+    <p id="state">Loading...</p>
+    <button onclick="setState('running')">Start</button>
+    <button class="stop" onclick="setState('stopped')">Stop</button>
+    <button onclick="runOnce()">Run once now (due posts only)</button>
+    <p class="note">Start mane scheduler cholbe. Stop mane ar kono post jabe na. Dry-run on thakle asol post jay na, sudhu log hoy.</p>
+  </div>
+
+  <div class="card">
+    <h2>Queue - Inbox</h2>
+    <div id="queue">Loading...</div>
+    <p class="note">Notun post dite uporer Upload form ta use koro. Purono upay (inbox/ folder e hate folder banano) ekhono cholbe, README te dekhano ache.</p>
+  </div>
+
+  <div class="card">
+    <h2>Manual post - LinkedIn ar Personal Facebook</h2>
+    <p>Ei 2 jaygay agent nije post kore na, karon ekhane automation er jhunki sobcheye beshi. Dashboard e caption copy koro, media download koro, tarpor niche link e giye nije post koro, tarpor "Manual done" chap dio.</p>
+    <p><a href="https://www.linkedin.com/feed/" target="_blank">LinkedIn kholo</a> | <a href="https://www.facebook.com/" target="_blank">Facebook kholo</a></p>
+    <div id="manual"></div>
+  </div>
+
+  <div class="card">
+    <h2>Auto post - Page ar Instagram</h2>
+    <p><span class="badge">AUTO</span> Facebook Page Mofassel Mojumder - Meta Graph API (official)</p>
+    <p><span class="badge">AUTO</span> Instagram @mofassel.mojumder - Meta Graph API (official). Instagram er jonno media er public URL lagbe, media_url.txt e dite hoy.</p>
+    <p><span class="badge manual">MANUAL</span> Personal Facebook - kono official API nei, tai manual</p>
+    <p><span class="badge manual">MANUAL</span> LinkedIn personal - suspension risk sobcheye beshi, tai manual</p>
+  </div>
+
+  <div class="card">
+    <h2>Status log - Audit log</h2>
+    <pre id="log">Loading...</pre>
+  </div>
+</main>
+<script>
+document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const msg = document.getElementById('uploadMsg');
+  msg.textContent = 'Upload hocche...';
+  const form = new FormData(e.target);
+  try {
+    const r = await fetch('/api/upload', {method: 'POST', body: form});
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      msg.textContent = 'Hoye geche! Post id: ' + d.post_id + ' - Queue te dekho.';
+      e.target.reset();
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      document.querySelectorAll('input[name="destinations"]').forEach(c => { c.checked = true; });
+    } else {
+      msg.textContent = 'Hoy ni: ' + (d.error || 'unknown error');
+    }
+  } catch (err) {
+    msg.textContent = 'Hoy ni: ' + err;
+  }
+  refresh();
+});
+async function refresh() {
+  const r = await fetch('/api/status');
+  const d = await r.json();
+  document.getElementById('state').innerHTML =
+    'Dry run: <b>' + d.dry_run + '</b> | Slots: <b>' + d.slots.join(', ') + '</b> | Scheduler: <b>' + d.scheduler + '</b> | Time (Dhaka): <b>' + d.now + '</b>';
+  let q = '<table><tr><th>Post</th><th>Date / Slot</th><th>Destinations</th><th>Status</th></tr>';
+  d.posts.forEach(p => {
+    q += '<tr><td>' + p.id + '</td><td>' + p.date + ' ' + p.slot + '</td><td>' + p.destinations.join(', ') + '</td><td>' + JSON.stringify(p.status.destinations || {}) + '</td></tr>';
+  });
+  document.getElementById('queue').innerHTML = q + '</table>';
+  let m = '';
+  d.posts.forEach(p => {
+    ['facebook_personal', 'linkedin_personal'].forEach(dest => {
+      if (p.destinations.includes(dest) && (p.status.destinations || {})[dest] === 'manual_ready') {
+        m += '<p><b>' + p.id + ' - ' + dest + '</b><br>Caption: ' + p.caption.slice(0, 200) + '<br><button onclick="manualDone(\'' + p.id + '\',\'' + dest + '\')">Manual done</button></p>';
+      }
+    });
+  });
+  document.getElementById('manual').innerHTML = m || '<p class="note">Ekhon kono manual post ready nei.</p>';
+  document.getElementById('log').textContent = d.log.map(e => e.time_dhaka + ' | ' + e.post_id + ' | ' + e.destination + ' | ' + e.status + ' | ' + e.detail).join('\n');
+}
+async function setState(s) {
+  await fetch('/api/state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({state: s})});
+  refresh();
+}
+async function runOnce() {
+  await fetch('/api/run-once', {method: 'POST'});
+  refresh();
+}
+async function manualDone(postId, dest) {
+  await fetch('/api/manual-done', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({post_id: postId, destination: dest})});
+  refresh();
+}
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>
