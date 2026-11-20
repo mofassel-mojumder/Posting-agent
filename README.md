@@ -2,7 +2,7 @@
 
 Alada posting agent. Muse er sathe tomar account connect kora nei. Eta tomar nijer agent, tomar PC te cholbe.
 
-A separate posting agent. It does not connect your accounts to Muse. It is your own agent, it runs on your PC.
+A separate posting agent. It does not connect your accounts to Muse. It is your own agent, it runs on your PC, or on GitHub Actions (free) so the PC can stay off. See "GitHub e publish koro" below.
 
 ## Eta ki kore / What it does
 
@@ -69,6 +69,43 @@ A separate posting agent. It does not connect your accounts to Muse. It is your 
 4. Jodi eki date ar somoy er post age theke thake, agent notun folder e -2, -3 diye rakhbe, purono post muche jabe na.
 
 Add a post from the dashboard: open http://localhost:8765, upload a picture or video, type the caption, pick the date and slot (2 PM or 8 PM), keep the destinations checked, press Upload. No folder work needed.
+
+## GitHub e publish koro (PC khula rakhte hobe na) / Publish on GitHub (no PC needed)
+
+GitHub Actions free te chole, taka lage na. PC bondho thakleo somoy hole GitHub er computer agent chalabe. GitHub er somoy UTC te dite hoy. Dhaka UTC+6, tai:
+- 08:00 UTC = 14:00 Dhaka (dupur 2 ta)
+- 14:00 UTC = 20:00 Dhaka (rat 8 ta)
+
+GitHub Actions runs free, no money needed. The PC can stay off. GitHub runs the agent at the slot times. Times above are UTC and Dhaka.
+
+1. GitHub e notun ekta PRIVATE repo banao, nam dao `posting-agent`.
+   WARNING: Portfolio er PUBLIC repo `mofassel-mojumder.github.io` ekhane babohar koro na. Agent er token thake, tai eta alada PRIVATE repo hote hobe. `.env` kokhono push koro na.
+   Create a NEW PRIVATE repo named `posting-agent` on GitHub. NEVER use the public portfolio repo. NEVER push `.env`.
+2. Ei folder ta oi repo te push koro. Tomar PC er terminal e, `posting-agent` folder er vitore:
+   ```
+   git init
+   git add .
+   git commit -m "Posting Agent v1"
+   git branch -M main
+   git remote add origin https://github.com/mofassel-mojumder/posting-agent.git
+   git push -u origin main
+   ```
+   Jodi remote age theke thake, tahole `git remote add` er bodle `git remote set-url origin https://github.com/mofassel-mojumder/posting-agent.git` likho.
+   Push this folder to that new private repo with the commands above.
+3. Secret gulo dao. GitHub e repo ta khule Settings > Secrets and variables > Actions > New repository secret e jao. Ei 3 ta secret banao:
+   - `META_PAGE_ACCESS_TOKEN` - tomar Meta Page token
+   - `META_PAGE_ID` - tomar Page ID
+   - `META_INSTAGRAM_USER_ID` - tomar Instagram user ID
+   Chaile `DRY_RUN` secret o banate paro, value `false` dile asol post jabe. Token na thakle agent nije theke dry-run e cholbe, kono asol post jabe na, ar workflow fail korbe na.
+   Add the 3 secrets above in repo Settings > Secrets and variables > Actions. Without a token the run stays in dry-run mode and does not fail.
+4. Post dao GitHub web theke. GitHub e repo ta khule inbox/ folder e jao, Add file > Upload files e click koro. Notun folder er nam dao, example `2026-11-20-1400`, tar vitore rakho: caption.txt, media.jpg ba media.mp4, ar post.json. post.json er vitore likho:
+   ```
+   {"date": "2026-11-20", "slot": "14:00", "destinations": ["facebook_page", "instagram", "facebook_personal", "linkedin_personal"]}
+   ```
+   Instagram er jonno media er public URL lagbe. Thakle oi folder e media_url.txt file e link ta rakho. Na thakle Instagram blocked dekhabe, ar agent thambe.
+   Add a post from the GitHub website: upload a new folder under inbox/ with caption.txt, a media file, and post.json as above. Or add the post on the PC dashboard first, then push it to GitHub.
+5. Check koro. Dupur 2 ta ba rat 8 tar por GitHub e repo ta khule Actions tab e jao. Run ta sobuj hole thik ache. Audit log ta artifact hisebe download kora jabe. Personal Facebook ar LinkedIn e agent nije post kore na, oi 2 ta manual_ready thakbe, tumi nije post korbe.
+   After 2 PM or 8 PM Dhaka, check the Actions tab. A green run means it worked. Download the audit log artifact to see what happened.
 
 ## Post kibhabe dibe (purono upay, ekhono cholbe) / How to add a post (old way, still works)
 

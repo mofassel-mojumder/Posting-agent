@@ -1,5 +1,8 @@
 """Scheduler. Checks due posts, posts at the slot time, stops on first error.
 
+A post is due only within 30 minutes after its slot, so a late
+GitHub Actions cron still works, but a post is never posted hours late.
+
 Rules, enforced here and nowhere else:
   - Max 2 posts per day, 1 per slot (slots come from config.yaml).
   - A destination already recorded in status.json is never posted again.

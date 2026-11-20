@@ -10,8 +10,9 @@ Layout:
                                         "facebook_personal", "linkedin_personal"]}
     status.json      - written by the agent, never by hand
 
-A post is due when its date is today and its slot time has passed.
-A destination already in status.json is never posted again.
+A post is due when its date is today and now is within 30 minutes
+after its slot time. A destination already in status.json is never
+posted again.
 """
 import json
 from datetime import datetime
@@ -79,7 +80,15 @@ def save_status(post_id, status):
 
 
 def is_due(post, now=None):
-    """Due when date is today and slot time has passed. Slots come from config."""
+    """Due when date is today and now is within 30 minutes after the slot.
+
+    The 30 minute window is for GitHub Actions: a scheduled cron can
+    start a few minutes late, so a post must still count as due a
+    little after its slot. After 30 minutes the slot is missed, and
+    the post is not posted late by hours.
+    """
+    from datetime import timedelta
+
     now = now or datetime.now(TZ)
     if post["date"] != now.strftime("%Y-%m-%d"):
         return False
@@ -88,7 +97,7 @@ def is_due(post, now=None):
     except ValueError:
         return False
     slot_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    return now >= slot_time
+    return slot_time <= now < slot_time + timedelta(minutes=30)
 
 
 def create_post(post_id, date, slot, destinations, caption, media_src=None):

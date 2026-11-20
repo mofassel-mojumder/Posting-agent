@@ -62,10 +62,13 @@ def main():
     print("1. Slots recognised:", cfg["slots"])
     print("2. Dry run is on, no token present.")
 
-    posts = {p["id"]: p for p in inbox.list_posts()}
-    sample = posts["sample-2026-11-19-2000"]
+    # Timing check uses a post dated today, so it works on any day.
+    # The sample folder is dated 2026-11-19 and would be yesterday
+    # on later days, so it must not be used for this check.
+    sample = {"date": TODAY, "slot": "20:00"}
     assert not inbox.is_due(sample, datetime.now(TZ).replace(hour=14, minute=5, second=0)), "20:00 must not be due at 14:05"
     assert inbox.is_due(sample, datetime.now(TZ).replace(hour=20, minute=5, second=0)), "20:00 must be due at 20:05"
+    assert not inbox.is_due(sample, datetime.now(TZ).replace(hour=20, minute=31, second=0)), "20:00 must not be due at 20:31 (30 minute window)"
     print("3. Slot timing ok: 20:00 not due at 14:05, due at 20:05.")
 
     fresh_log()

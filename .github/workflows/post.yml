@@ -1,0 +1,76 @@
+# Posting Agent v1 - GitHub Actions publish
+# Runs on GitHub free minutes, no PC needed, no money needed.
+# Schedule is in UTC. Dhaka is UTC+6 all year, so:
+#   08:00 UTC = 14:00 Dhaka (2 PM)
+#   14:00 UTC = 20:00 Dhaka (8 PM)
+# GitHub cron can start a few minutes late. The agent accepts a post
+# only within 30 minutes after its slot, so a late run still works
+# and a post is never posted hours late.
+# Personal Facebook and LinkedIn are manual-only by design. This
+# workflow never posts to them. It only marks them manual_ready.
+# Secrets are never printed to logs. Only yes/no is printed.
+name: Post at 2 PM and 8 PM Dhaka
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requirements
+        run: python -m pip install -r requirements.txt
+
+      - name: Write .env from secrets (secrets are never printed)
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_INSTAGRAM_USER_ID: ${{ secrets.META_INSTAGRAM_USER_ID }}
+          DRY_RUN_SECRET: ${{ secrets.DRY_RUN }}
+        run: |
+          python - <<'PY'
+          import os
+          token = os.environ.get("META_PAGE_ACCESS_TOKEN", "")
+          page_id = os.environ.get("META_PAGE_ID", "")
+          ig_id = os.environ.get("META_INSTAGRAM_USER_ID", "")
+          dry = os.environ.get("DRY_RUN_SECRET", "true").strip().lower()
+          if not token or not page_id:
+              # No token means dry-run only. The run still succeeds,
+              # it only logs what it would have posted.
+              dry = "true"
+              print("No Meta token in secrets. Running in DRY RUN mode.")
+          else:
+              print("Meta token present in secrets: yes")
+              print("Dry run:", dry)
+          with open(".env", "w", encoding="utf-8") as f:
+              f.write("DRY_RUN=" + dry + "\n")
+              f.write("META_PAGE_ACCESS_TOKEN=" + token + "\n")
+              f.write("META_PAGE_ID=" + page_id + "\n")
+              f.write("META_INSTAGRAM_USER_ID=" + ig_id + "\n")
+          print("Wrote .env (values are not printed).")
+          PY
+
+      - name: Run one scheduler pass
+        run: python -m posting_agent --once
+
+      - name: Upload audit log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-log
+          path: logs/audit.log
+          if-no-files-found: warn
