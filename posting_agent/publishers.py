@@ -205,11 +205,15 @@ def _upload_linkedin_image(token, author, media_path):
 def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
     """Upload a video with the LinkedIn Video API.
 
-    Step 1: initializeUpload, which returns a video URN, a video upload URL,
-    and (when a thumbnail is given) a thumbnail upload URL.
+    Step 1: initializeUpload, which returns a video URN, the video part
+    upload instructions, an upload token, and (when a thumbnail is given)
+    a thumbnail upload URL.
     Step 2: PUT the thumbnail bytes to the thumbnail upload URL, if any.
-    Step 3: PUT the video bytes to the video upload URL.
-    Step 4: finalize by polling the video until its status is AVAILABLE.
+    Step 3: PUT each video part (LinkedIn splits files into ~4 MB parts)
+    to its own upload URL, keeping the ETag of every part.
+    Step 4: finalizeUpload with the upload token and the part ETags, when
+    the upload is multi-part.
+    Step 5: poll the video until its status is AVAILABLE.
     Returns the video URN, or raises on any failure.
     """
     size = Path(media_path).stat().st_size
@@ -232,10 +236,10 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
         raise RuntimeError(f"initializeUpload HTTP {r.status_code}: {json.dumps(data)[:300]}")
     value = data.get("value", {})
     video_urn = value.get("video", "")
-    instructions = value.get("uploadInstructions", [{}])
-    upload_url = instructions[0].get("uploadUrl", "") if instructions else ""
-    if not video_urn or not upload_url:
-        raise RuntimeError(f"initializeUpload gave no video URN or upload URL: {json.dumps(data)[:300]}")
+    instructions = value.get("uploadInstructions", [])
+    upload_token = value.get("uploadToken", "")
+    if not video_urn or not instructions:
+        raise RuntimeError(f"initializeUpload gave no video URN or upload instructions: {json.dumps(data)[:300]}")
     if want_thumbnail:
         thumb_url = value.get("thumbnailUploadUrl", "")
         if not thumb_url:
@@ -253,10 +257,41 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
             )
         if r_thumb.status_code not in (200, 201):
             raise RuntimeError(f"thumbnail upload HTTP {r_thumb.status_code}: {r_thumb.text[:300]}")
+    etags = []
     with open(media_path, "rb") as f:
-        r2 = requests.put(upload_url, headers={"Authorization": f"Bearer {token}"}, data=f, timeout=300)
-    if r2.status_code not in (200, 201):
-        raise RuntimeError(f"video upload HTTP {r2.status_code}: {r2.text[:300]}")
+        for inst in instructions:
+            url = inst.get("uploadUrl", "")
+            if not url:
+                raise RuntimeError("initializeUpload gave an upload instruction with no uploadUrl")
+            first = int(inst.get("firstByte", 0))
+            last = int(inst.get("lastByte", size - 1))
+            f.seek(first)
+            chunk = f.read(last - first + 1)
+            r_part = requests.put(
+                url, headers={"Authorization": f"Bearer {token}"}, data=chunk, timeout=300
+            )
+            if r_part.status_code not in (200, 201):
+                raise RuntimeError(
+                    f"video part upload HTTP {r_part.status_code}: {r_part.text[:300]}"
+                )
+            etag = r_part.headers.get("ETag") or r_part.headers.get("etag")
+            if etag:
+                etags.append(etag)
+    if upload_token and len(instructions) > 1 and etags:
+        r_fin = requests.post(
+            f"{LINKEDIN_REST}/videos?action=finalizeUpload",
+            headers=_linkedin_headers(token, rest=True),
+            json={
+                "finalizeUploadRequest": {
+                    "video": video_urn,
+                    "uploadToken": upload_token,
+                    "uploadedPartIds": etags,
+                }
+            },
+            timeout=60,
+        )
+        if r_fin.status_code not in (200, 201):
+            raise RuntimeError(f"finalizeUpload HTTP {r_fin.status_code}: {r_fin.text[:300]}")
     video_id = video_urn.rsplit(":", 1)[-1]
     for _ in range(12):
         r3 = requests.get(
