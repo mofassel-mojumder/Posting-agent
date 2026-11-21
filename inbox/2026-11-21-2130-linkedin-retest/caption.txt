@@ -1,0 +1,11 @@
+From December 4, Google will take photos from your website and turn them into your Performance Max ads. By default.
+
+Even if you turned Dynamic images off. Google ignores that setting now, for new campaigns. Existing campaigns keep their settings. Only new ones change.
+
+That means a blurry van photo, a messy job site photo, a random team photo. Any of them can show as your ad, to people ready to hire you. And you still pay for every click.
+
+The fix takes two minutes. When you build the new campaign, open the Images setting and turn Landing page images off. Then upload only the photos you chose.
+
+You control the image. Not Google.
+
+Follow for more.
