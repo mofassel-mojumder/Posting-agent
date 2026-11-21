@@ -1,1 +1,5 @@
-{"date":"2026-11-21","destinations":["facebook_page","instagram","linkedin_personal"],"slot":"14:00"}
+{
+  "date": "2026-11-21",
+  "slot": "14:00",
+  "destinations": ["linkedin_personal"]
+}
