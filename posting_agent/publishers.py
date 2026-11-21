@@ -292,10 +292,12 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
         )
         if r_fin.status_code not in (200, 201):
             raise RuntimeError(f"finalizeUpload HTTP {r_fin.status_code}: {r_fin.text[:300]}")
-    video_id = video_urn.rsplit(":", 1)[-1]
+    from urllib.parse import quote
+
+    video_ref = quote(video_urn, safe="")
     for _ in range(60):
         r3 = requests.get(
-            f"{LINKEDIN_REST}/videos/{video_id}",
+            f"{LINKEDIN_REST}/videos/{video_ref}",
             headers=_linkedin_headers(token, rest=True),
             timeout=60,
         )
