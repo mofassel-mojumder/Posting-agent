@@ -45,6 +45,12 @@ def list_posts():
             if f.suffix.lower() in MEDIA_EXTS:
                 media = f
                 break
+        thumbnail = None
+        for name in ("thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg"):
+            p = folder / name
+            if p.exists():
+                thumbnail = p
+                break
         status = {}
         status_path = folder / "status.json"
         if status_path.exists():
@@ -62,6 +68,7 @@ def list_posts():
                 "folder": str(folder),
                 "caption": caption_path.read_text(encoding="utf-8"),
                 "media": str(media) if media else None,
+                "thumbnail": str(thumbnail) if thumbnail else None,
                 "media_url": media_url,
                 "date": meta.get("date", ""),
                 "slot": meta.get("slot", ""),

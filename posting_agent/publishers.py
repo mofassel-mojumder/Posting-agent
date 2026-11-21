@@ -202,15 +202,18 @@ def _upload_linkedin_image(token, author, media_path):
     return asset
 
 
-def _upload_linkedin_video(token, author, media_path):
+def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
     """Upload a video with the LinkedIn Video API.
 
-    Step 1: initializeUpload, which returns a video URN and an upload URL.
-    Step 2: PUT the file bytes to that upload URL.
-    Step 3: finalize by polling the video until its status is AVAILABLE.
+    Step 1: initializeUpload, which returns a video URN, a video upload URL,
+    and (when a thumbnail is given) a thumbnail upload URL.
+    Step 2: PUT the thumbnail bytes to the thumbnail upload URL, if any.
+    Step 3: PUT the video bytes to the video upload URL.
+    Step 4: finalize by polling the video until its status is AVAILABLE.
     Returns the video URN, or raises on any failure.
     """
     size = Path(media_path).stat().st_size
+    want_thumbnail = bool(thumbnail_path) and Path(thumbnail_path).exists()
     r = requests.post(
         f"{LINKEDIN_REST}/videos?action=initializeUpload",
         headers=_linkedin_headers(token, rest=True),
@@ -219,7 +222,7 @@ def _upload_linkedin_video(token, author, media_path):
                 "owner": author,
                 "fileSizeBytes": size,
                 "uploadCaptions": False,
-                "uploadThumbnail": False,
+                "uploadThumbnail": want_thumbnail,
             }
         },
         timeout=60,
@@ -233,6 +236,23 @@ def _upload_linkedin_video(token, author, media_path):
     upload_url = instructions[0].get("uploadUrl", "") if instructions else ""
     if not video_urn or not upload_url:
         raise RuntimeError(f"initializeUpload gave no video URN or upload URL: {json.dumps(data)[:300]}")
+    if want_thumbnail:
+        thumb_url = value.get("thumbnailUploadUrl", "")
+        if not thumb_url:
+            raise RuntimeError("initializeUpload gave no thumbnailUploadUrl even though uploadThumbnail was true")
+        with open(thumbnail_path, "rb") as f:
+            r_thumb = requests.put(
+                thumb_url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "media-type-family": "STILLIMAGE",
+                    "Content-Type": "application/octet-stream",
+                },
+                data=f,
+                timeout=60,
+            )
+        if r_thumb.status_code not in (200, 201):
+            raise RuntimeError(f"thumbnail upload HTTP {r_thumb.status_code}: {r_thumb.text[:300]}")
     with open(media_path, "rb") as f:
         r2 = requests.put(upload_url, headers={"Authorization": f"Bearer {token}"}, data=f, timeout=300)
     if r2.status_code not in (200, 201):
@@ -287,7 +307,7 @@ def post_linkedin(cfg, post):
                 media = [{"status": "READY", "media": asset}]
                 category = "IMAGE"
             elif suffix in VIDEO_EXTS:
-                video_urn = _upload_linkedin_video(token, author, post["media"])
+                video_urn = _upload_linkedin_video(token, author, post["media"], post.get("thumbnail"))
                 media = [{"status": "READY", "media": video_urn}]
                 category = "VIDEO"
             else:
