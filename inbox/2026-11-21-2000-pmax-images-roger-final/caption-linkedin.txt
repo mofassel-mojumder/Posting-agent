@@ -1,0 +1,11 @@
+From December 4, 2026, every new Performance Max campaign pulls images from your landing pages by default, even if you turned Dynamic images off for the whole account.
+
+Google ignores that setting now, for new campaigns. Existing campaigns keep their settings. Only new ones change.
+
+For a local service business, that is dangerous. A blurry van photo, a messy job site photo, a random team photo. Any of them can show as your ad, to people ready to hire you. And you still pay for every click.
+
+Before you launch, open the Images setting and turn Landing page images off. Then upload only the photos you chose.
+
+You control the image. Not Google.
+
+Follow for more.
