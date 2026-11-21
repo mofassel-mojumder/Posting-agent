@@ -73,7 +73,9 @@ def _run_post(cfg, post):
             result = publishers.post_facebook_page(cfg, post)
         elif dest == "instagram":
             result = publishers.post_instagram(cfg, post)
-        elif dest in ("facebook_personal", "linkedin_personal"):
+        elif dest == "linkedin_personal":
+            result = publishers.post_linkedin(cfg, post)
+        elif dest == "facebook_personal":
             result = publishers.manual_pack(cfg, post, dest)
         else:
             result = publishers.PublishResult(False, "failed", f"unknown destination {dest}")

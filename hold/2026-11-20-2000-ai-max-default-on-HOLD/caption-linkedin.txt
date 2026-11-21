@@ -1,0 +1,15 @@
+Google Ads Editor 2.14 quietly changed the default for new Search campaigns.
+
+AI Max, text asset automation, and Final URL expansion are now ON by default.
+
+That means Google can rewrite your ads, send clicks to pages you did not choose, and match you to searches you never picked.
+
+For local service businesses, the cost is real: clicks from towns you do not serve, for jobs you do not do.
+
+Before you launch, check three toggles in Editor: AI Max, text automation, final URL expansion. Turn them OFF unless you chose them on purpose.
+
+You control the spend. Not Google.
+
+Follow for practical Google Ads breakdowns. No theory.
+
+#GoogleAds #PPC #LocalBusiness #DigitalMarketing

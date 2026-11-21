@@ -7,24 +7,35 @@ AUTO (official Meta Graph API, only when a real token is in .env):
     media_url.txt is supplied, Instagram is reported as blocked with
     that reason, never faked as posted.
 
-MANUAL (no official API exists in v1, so nothing is automated):
+AUTO (official LinkedIn API, only when a real token is in .env):
+  - LinkedIn personal profile: POST /v2/ugcPosts with scope
+    w_member_social. Text, image (assets registerUpload) and video
+    (Videos API initializeUpload, upload, then poll until AVAILABLE)
+    are supported. Only 2 posts per day, the same limit as the rest
+    of the agent. No connection requests, no messages, no likes, no
+    comments, no scraping: posting only, by hand for everything else.
+    If LINKEDIN_ACCESS_TOKEN or LINKEDIN_PERSON_URN is missing, the
+    post is reported manual_ready, never faked as posted.
+
+MANUAL (no official API exists, so nothing is automated):
   - Personal Facebook profile: there is no official API for personal
     profile posting. Draft-ready only.
-  - LinkedIn personal profile: personal profile automation is the
-    highest suspension risk, so v1 never posts to it automatically.
-    Draft-ready only. Official API posting is only for a LinkedIn
-    Company Page, which is not in scope for v1.
 
 DRY-RUN is the default. With DRY_RUN=true, or with no token, no HTTP
-call is made to Meta at all. The audit log records "dry_run", not "posted".
+call is made to Meta or LinkedIn at all. The audit log records
+"dry_run", not "posted".
 """
 import json
+import time
 from pathlib import Path
 
 import requests
 
 GRAPH_BASE = "https://graph.facebook.com/v21.0"
+LINKEDIN_BASE = "https://api.linkedin.com/v2"
+LINKEDIN_REST = "https://api.linkedin.com/rest"
 VIDEO_EXTS = {".mp4", ".mov"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 
 
 class PublishResult:
@@ -131,21 +142,191 @@ def post_instagram(cfg, post):
         return PublishResult(False, "failed", f"Graph API error: {exc}")
 
 
+def _linkedin_caption(post):
+    """LinkedIn caption. Use caption-linkedin.txt when the post folder
+    has one (LinkedIn captions often differ from the Facebook one),
+    otherwise use the normal caption."""
+    folder = Path(post.get("folder", "")) if post.get("folder") else None
+    if folder:
+        alt = folder / "caption-linkedin.txt"
+        if alt.exists():
+            text = alt.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+    return post["caption"]
+
+
+def _linkedin_headers(token, rest=False):
+    headers = {"Authorization": f"Bearer {token}"}
+    if rest:
+        headers["LinkedIn-Version"] = "202401"
+        headers["Content-Type"] = "application/json"
+    else:
+        headers["X-Restli-Protocol-Version"] = "2.0.0"
+        headers["Content-Type"] = "application/json"
+    return headers
+
+
+def _upload_linkedin_image(token, author, media_path):
+    """Upload an image to LinkedIn (assets registerUpload). Returns the
+    asset URN, or raises on any failure. No faking: a failed upload
+    is reported as a failure by the caller."""
+    r = requests.post(
+        f"{LINKEDIN_BASE}/assets?action=registerUpload",
+        headers=_linkedin_headers(token),
+        json={
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                "owner": author,
+                "serviceRelationships": [
+                    {"relationshipType": "OWNER", "identifier": "urn:li:userGeneratedContent"}
+                ],
+            }
+        },
+        timeout=60,
+    )
+    data = r.json()
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"registerUpload HTTP {r.status_code}: {json.dumps(data)[:300]}")
+    value = data.get("value", {})
+    upload_url = value.get("uploadMechanism", {}).get(
+        "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest", {}
+    ).get("uploadUrl", "")
+    asset = value.get("asset", "")
+    if not upload_url or not asset:
+        raise RuntimeError(f"registerUpload gave no upload URL or asset: {json.dumps(data)[:300]}")
+    with open(media_path, "rb") as f:
+        r2 = requests.put(upload_url, headers={"Authorization": f"Bearer {token}"}, data=f, timeout=120)
+    if r2.status_code not in (200, 201):
+        raise RuntimeError(f"image upload HTTP {r2.status_code}: {r2.text[:300]}")
+    return asset
+
+
+def _upload_linkedin_video(token, author, media_path):
+    """Upload a video with the LinkedIn Video API.
+
+    Step 1: initializeUpload, which returns a video URN and an upload URL.
+    Step 2: PUT the file bytes to that upload URL.
+    Step 3: finalize by polling the video until its status is AVAILABLE.
+    Returns the video URN, or raises on any failure.
+    """
+    size = Path(media_path).stat().st_size
+    r = requests.post(
+        f"{LINKEDIN_REST}/videos?action=initializeUpload",
+        headers=_linkedin_headers(token, rest=True),
+        json={
+            "initializeUploadRequest": {
+                "owner": author,
+                "fileSizeBytes": size,
+                "uploadCaptions": False,
+                "uploadThumbnail": False,
+            }
+        },
+        timeout=60,
+    )
+    data = r.json()
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"initializeUpload HTTP {r.status_code}: {json.dumps(data)[:300]}")
+    value = data.get("value", {})
+    video_urn = value.get("video", "")
+    instructions = value.get("uploadInstructions", [{}])
+    upload_url = instructions[0].get("uploadUrl", "") if instructions else ""
+    if not video_urn or not upload_url:
+        raise RuntimeError(f"initializeUpload gave no video URN or upload URL: {json.dumps(data)[:300]}")
+    with open(media_path, "rb") as f:
+        r2 = requests.put(upload_url, headers={"Authorization": f"Bearer {token}"}, data=f, timeout=300)
+    if r2.status_code not in (200, 201):
+        raise RuntimeError(f"video upload HTTP {r2.status_code}: {r2.text[:300]}")
+    video_id = video_urn.rsplit(":", 1)[-1]
+    for _ in range(12):
+        r3 = requests.get(
+            f"{LINKEDIN_REST}/videos/{video_id}",
+            headers=_linkedin_headers(token, rest=True),
+            timeout=60,
+        )
+        data3 = r3.json()
+        if r3.status_code in (200, 201) and data3.get("status") == "AVAILABLE":
+            return video_urn
+        if r3.status_code in (200, 201) and data3.get("status") in ("FAILED", "PROCESSING_FAILED"):
+            raise RuntimeError(f"video processing failed: {json.dumps(data3)[:300]}")
+        time.sleep(5)
+    raise RuntimeError("video did not become AVAILABLE in time, post was not created")
+
+
+def post_linkedin(cfg, post):
+    """Post to the LinkedIn personal profile through the official API.
+
+    Scope needed: w_member_social. Token lives 60 days, then it must
+    be renewed on LinkedIn Developers and put in GitHub Secrets again.
+    Without a token or a person URN, this returns manual_ready, so the
+    dashboard shows the caption to copy and the user posts by hand.
+    In dry-run mode nothing is sent to LinkedIn at all.
+    """
+    env = cfg["env"]
+    token = env.get("LINKEDIN_ACCESS_TOKEN", "")
+    author = env.get("LINKEDIN_PERSON_URN", "")
+    caption = _linkedin_caption(post)
+    if cfg["dry_run"]:
+        return PublishResult(
+            True, "dry_run", "DRY RUN: would POST to LinkedIn /v2/ugcPosts as " + (author or "PERSON_URN")
+        )
+    if not token or not author:
+        return PublishResult(
+            True,
+            "manual_ready",
+            "LinkedIn personal profile: manual step, no LinkedIn token or person URN in .env. "
+            "Copy the caption, use the media file, open https://www.linkedin.com/feed/ and post it yourself.",
+        )
+    try:
+        media = None
+        category = "NONE"
+        if post.get("media"):
+            suffix = Path(post["media"]).suffix.lower()
+            if suffix in IMAGE_EXTS:
+                asset = _upload_linkedin_image(token, author, post["media"])
+                media = [{"status": "READY", "media": asset}]
+                category = "IMAGE"
+            elif suffix in VIDEO_EXTS:
+                video_urn = _upload_linkedin_video(token, author, post["media"])
+                media = [{"status": "READY", "media": video_urn}]
+                category = "VIDEO"
+            else:
+                return PublishResult(False, "failed", f"LinkedIn cannot post media type {suffix}")
+        body = {
+            "author": author,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": caption},
+                    "shareMediaCategory": category,
+                    "media": media or [],
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
+        }
+        r = requests.post(
+            f"{LINKEDIN_BASE}/ugcPosts", headers=_linkedin_headers(token), json=body, timeout=60
+        )
+        data = r.json()
+        if r.status_code in (200, 201) and "id" in data:
+            post_id = data["id"]
+            url = f"https://www.linkedin.com/feed/update/{post_id}" if post_id.startswith("urn:li:share:") else "https://www.linkedin.com/feed/"
+            return PublishResult(True, "posted", f"LinkedIn id {post_id}", url)
+        return PublishResult(False, "failed", f"LinkedIn HTTP {r.status_code}: {json.dumps(data)[:300]}")
+    except Exception as exc:  # noqa: BLE001 - report the error, never hide it
+        return PublishResult(False, "failed", f"LinkedIn error: {exc}")
+
+
 def manual_pack(cfg, post, destination):
-    """Draft-ready pack for Personal Facebook and LinkedIn.
+    """Draft-ready pack for Personal Facebook.
 
     Nothing is posted. The dashboard shows the caption to copy, the
     media file to download, and the site to open.
     """
-    if destination == "linkedin_personal":
-        site = "https://www.linkedin.com/feed/"
-        label = "LinkedIn personal profile"
-    else:
-        site = "https://www.facebook.com/"
-        label = "Personal Facebook profile"
     return PublishResult(
         True,
         "manual_ready",
-        f"{label}: manual step. Copy the caption, use the media file, open {site} and post it yourself. "
-        "No official API posts to a personal profile in v1, on purpose.",
+        "Personal Facebook profile: manual step. Copy the caption, use the media file, "
+        "open https://www.facebook.com/ and post it yourself. "
+        "No official API posts to a personal profile, on purpose.",
     )

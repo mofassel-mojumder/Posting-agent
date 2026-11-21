@@ -7,9 +7,12 @@ Checks:
   3. Dry-run records facebook_page as dry_run in the audit log.
   4. Instagram without a public media URL is blocked, and the scheduler
      stops at once, so the manual destinations are not attempted.
-  5. With a public media URL, Instagram is dry_run, then both manual
-     destinations become manual_ready, each logged separately.
+  5. With a public media URL, Instagram is dry_run, Personal Facebook
+     is manual_ready, and LinkedIn is dry_run (no token, dry-run mode),
+     each logged separately.
   6. A second run does not duplicate any destination.
+  7. In live mode with no LinkedIn token, LinkedIn is manual_ready,
+     never faked as posted, and no HTTP call goes to LinkedIn.
 """
 import json
 import shutil
@@ -95,9 +98,9 @@ def main():
         "facebook_page": "dry_run",
         "instagram": "dry_run",
         "facebook_personal": "manual_ready",
-        "linkedin_personal": "manual_ready",
+        "linkedin_personal": "dry_run",
     }, by_dest
-    print("7. With public URL: all 4 destinations logged separately, manual ones are manual_ready.")
+    print("7. With public URL: all 4 destinations logged separately, LinkedIn is dry_run.")
 
     before = len(log_for("test-dry-run-b"))
     scheduler.run_once(cfg, now=now)
@@ -105,7 +108,30 @@ def main():
     assert before == after, f"second run duplicated entries: {before} -> {after}"
     print("8. No duplicates on second run.")
 
-    for pid in ("test-dry-run-a", "test-dry-run-b"):
+    # Live mode, no LinkedIn token: LinkedIn must be manual_ready,
+    # and it must not call the LinkedIn API at all.
+    live_cfg = dict(cfg)
+    live_cfg["dry_run"] = False
+    live_cfg["env"] = dict(cfg["env"])
+    # No waiting between destinations in this test, or it would sleep
+    # 60 to 120 seconds in live mode for no reason.
+    live_cfg["delay_between_destinations_seconds"] = {"min": 0, "max": 0}
+    make_post("test-dry-run-c")
+    (BASE / "inbox" / "test-dry-run-c" / "post.json").write_text(
+        json.dumps(
+            {"date": TODAY, "slot": "14:00", "destinations": ["linkedin_personal"]},
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    scheduler.run_once(live_cfg, now=now)
+    events_c = log_for("test-dry-run-c")
+    by_dest_c = {e["destination"]: e["status"] for e in events_c}
+    assert by_dest_c.get("linkedin_personal") == "manual_ready", by_dest_c
+    print("9. Live mode, no LinkedIn token: LinkedIn is manual_ready, no API call.")
+
+    for pid in ("test-dry-run-a", "test-dry-run-b", "test-dry-run-c"):
         shutil.rmtree(BASE / "inbox" / pid)
     print("ALL DRY-RUN TESTS PASSED. No real post was made. No token was used.")
     print("Audit log kept at:", BASE / "logs" / "audit.log")

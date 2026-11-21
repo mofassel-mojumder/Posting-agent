@@ -6,8 +6,10 @@
 # GitHub cron can start a few minutes late. The agent accepts a post
 # only within 30 minutes after its slot, so a late run still works
 # and a post is never posted hours late.
-# Personal Facebook and LinkedIn are manual-only by design. This
-# workflow never posts to them. It only marks them manual_ready.
+# Personal Facebook is manual-only by design. This workflow never
+# posts to it. It only marks it manual_ready. LinkedIn auto-posts
+# through the official LinkedIn API when LINKEDIN_ACCESS_TOKEN and
+# LINKEDIN_PERSON_URN are in secrets, otherwise it stays manual_ready.
 # Secrets are never printed to logs. Only yes/no is printed.
 name: Post at 2 PM and 8 PM Dhaka
 
@@ -40,6 +42,8 @@ jobs:
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_INSTAGRAM_USER_ID: ${{ secrets.META_INSTAGRAM_USER_ID }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
           DRY_RUN_SECRET: ${{ secrets.DRY_RUN }}
         run: |
           python - <<'PY'
@@ -47,20 +51,32 @@ jobs:
           token = os.environ.get("META_PAGE_ACCESS_TOKEN", "")
           page_id = os.environ.get("META_PAGE_ID", "")
           ig_id = os.environ.get("META_INSTAGRAM_USER_ID", "")
+          li_token = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
+          li_urn = os.environ.get("LINKEDIN_PERSON_URN", "")
           dry = os.environ.get("DRY_RUN_SECRET", "true").strip().lower()
-          if not token or not page_id:
-              # No token means dry-run only. The run still succeeds,
-              # it only logs what it would have posted.
+          if not dry:
               dry = "true"
-              print("No Meta token in secrets. Running in DRY RUN mode.")
+          if not token or not page_id:
+              print("No Meta token in secrets. Facebook Page and Instagram stay dry-run/manual.")
           else:
               print("Meta token present in secrets: yes")
-              print("Dry run:", dry)
+          if not li_token or not li_urn:
+              print("No LinkedIn token in secrets. LinkedIn stays manual_ready.")
+          else:
+              print("LinkedIn token present in secrets: yes")
+          if (not token or not page_id) and (not li_token or not li_urn):
+              # No token anywhere means dry-run only. The run still
+              # succeeds, it only logs what it would have posted.
+              dry = "true"
+              print("No token in secrets at all. Running in DRY RUN mode.")
+          print("Dry run:", dry)
           with open(".env", "w", encoding="utf-8") as f:
               f.write("DRY_RUN=" + dry + "\n")
               f.write("META_PAGE_ACCESS_TOKEN=" + token + "\n")
               f.write("META_PAGE_ID=" + page_id + "\n")
               f.write("META_INSTAGRAM_USER_ID=" + ig_id + "\n")
+              f.write("LINKEDIN_ACCESS_TOKEN=" + li_token + "\n")
+              f.write("LINKEDIN_PERSON_URN=" + li_urn + "\n")
           print("Wrote .env (values are not printed).")
           PY
 

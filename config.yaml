@@ -27,6 +27,6 @@ destinations:
     api: none
   linkedin_personal:
     enabled: true
-    mode: manual
+    mode: auto
     name: "LinkedIn personal profile"
-    api: none
+    api: linkedin_v2
