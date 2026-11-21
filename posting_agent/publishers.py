@@ -159,7 +159,7 @@ def _linkedin_caption(post):
 def _linkedin_headers(token, rest=False):
     headers = {"Authorization": f"Bearer {token}"}
     if rest:
-        headers["LinkedIn-Version"] = "202401"
+        headers["LinkedIn-Version"] = "202611"
         headers["Content-Type"] = "application/json"
     else:
         headers["X-Restli-Protocol-Version"] = "2.0.0"

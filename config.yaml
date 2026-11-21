@@ -4,6 +4,7 @@ timezone: Asia/Dhaka
 slots:
   - "14:00"
   - "20:00"
+  - "21:30"
 max_posts_per_day: 2
 delay_between_destinations_seconds:
   min: 60
