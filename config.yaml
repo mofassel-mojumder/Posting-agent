@@ -2,7 +2,7 @@
 # No token or password in this file. Tokens live only in .env
 timezone: Asia/Dhaka
 slots:
-  - "11:30"
+  - "10:59"
   - "14:00"
   - "20:00"
 max_posts_per_day: 2
