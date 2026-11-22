@@ -380,6 +380,7 @@ def post_linkedin(cfg, post):
             )
             # The Posts API returns the new post URN in the x-restli-id
             # header; the body is often empty, so never require JSON here.
+            # A 201 means the post was created even if no ID comes back.
             post_id = r.headers.get("x-restli-id", "") or ""
             if not post_id and r.content:
                 try:
@@ -387,9 +388,10 @@ def post_linkedin(cfg, post):
                     post_id = data.get("id", "") or ""
                 except ValueError:
                     post_id = ""
-            if r.status_code in (200, 201) and post_id:
+            if r.status_code in (200, 201):
                 url = f"https://www.linkedin.com/feed/update/{post_id}" if post_id.startswith("urn:li:share:") else "https://www.linkedin.com/feed/"
-                return PublishResult(True, "posted", f"LinkedIn id {post_id}", url)
+                detail = f"LinkedIn id {post_id}" if post_id else "LinkedIn posted (201 Created)"
+                return PublishResult(True, "posted", detail, url)
             return PublishResult(False, "failed", f"LinkedIn HTTP {r.status_code}: {r.text[:300]}")
         body = {
             "author": author,
