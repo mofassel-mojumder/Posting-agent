@@ -304,7 +304,10 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
             headers=_linkedin_headers(token, rest=True),
             timeout=60,
         )
-        data3 = r3.json()
+        try:
+            data3 = r3.json() if r3.content else {}
+        except ValueError:
+            data3 = {}
         if i == 0:
             print(f"[linkedin] status poll 1: http={r3.status_code} status={data3.get('status')}")
         if r3.status_code in (200, 201) and data3.get("status") == "AVAILABLE":
@@ -375,12 +378,19 @@ def post_linkedin(cfg, post):
             r = requests.post(
                 f"{LINKEDIN_REST}/posts", headers=_linkedin_headers(token, rest=True), json=body, timeout=60
             )
-            data = r.json()
-            if r.status_code in (200, 201) and "id" in data:
-                post_id = data["id"]
+            # The Posts API returns the new post URN in the x-restli-id
+            # header; the body is often empty, so never require JSON here.
+            post_id = r.headers.get("x-restli-id", "") or ""
+            if not post_id and r.content:
+                try:
+                    data = r.json()
+                    post_id = data.get("id", "") or ""
+                except ValueError:
+                    post_id = ""
+            if r.status_code in (200, 201) and post_id:
                 url = f"https://www.linkedin.com/feed/update/{post_id}" if post_id.startswith("urn:li:share:") else "https://www.linkedin.com/feed/"
                 return PublishResult(True, "posted", f"LinkedIn id {post_id}", url)
-            return PublishResult(False, "failed", f"LinkedIn HTTP {r.status_code}: {json.dumps(data)[:300]}")
+            return PublishResult(False, "failed", f"LinkedIn HTTP {r.status_code}: {r.text[:300]}")
         body = {
             "author": author,
             "lifecycleState": "PUBLISHED",
