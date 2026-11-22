@@ -87,12 +87,16 @@ def save_status(post_id, status):
 
 
 def is_due(post, now=None):
-    """Due when date is today and now is within 30 minutes after the slot.
+    """Due when date is today and now is within 15 minutes before to
+    30 minutes after the slot.
 
-    The 30 minute window is for GitHub Actions: a scheduled cron can
-    start a few minutes late, so a post must still count as due a
-    little after its slot. After 30 minutes the slot is missed, and
-    the post is not posted late by hours.
+    The window opens 15 minutes early because video uploads and
+    processing take minutes: a run that starts at 1:50 PM for a 2 PM
+    slot lets the post go live right at 2 PM. The 30 minute tail is
+    for GitHub Actions: a scheduled cron can start a few minutes
+    late, so a post must still count as due a little after its slot.
+    After 30 minutes the slot is missed, and the post is not posted
+    late by hours.
     """
     from datetime import timedelta
 
@@ -104,7 +108,7 @@ def is_due(post, now=None):
     except ValueError:
         return False
     slot_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    return slot_time <= now < slot_time + timedelta(minutes=30)
+    return slot_time - timedelta(minutes=15) <= now < slot_time + timedelta(minutes=30)
 
 
 def create_post(post_id, date, slot, destinations, caption, media_src=None):
