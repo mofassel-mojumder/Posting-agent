@@ -64,13 +64,20 @@ def post_facebook_page(cfg, post):
     try:
         if _is_video(post["media"]):
             url = f"{GRAPH_BASE}/{page_id}/videos"
-            with open(post["media"], "rb") as f:
+            files = {"source": open(post["media"], "rb")}
+            thumb = post.get("thumbnail")
+            if thumb:
+                files["thumb"] = open(thumb, "rb")
+            try:
                 r = requests.post(
                     url,
                     data={"description": caption, "access_token": token},
-                    files={"source": f},
+                    files=files,
                     timeout=120,
                 )
+            finally:
+                for f in files.values():
+                    f.close()
         else:
             url = f"{GRAPH_BASE}/{page_id}/photos"
             with open(post["media"], "rb") as f:
@@ -124,6 +131,12 @@ def post_instagram(cfg, post):
                 "caption": post["caption"],
                 "access_token": token,
             }
+            # Custom cover: the thumbnail image sits in the same public
+            # folder as the video, so derive its URL from the media URL.
+            if post.get("thumbnail"):
+                thumb_name = Path(post["thumbnail"]).name
+                cover_url = media_url.rsplit("/", 1)[0] + "/" + thumb_name
+                payload["cover_url"] = cover_url
         r = requests.post(f"{GRAPH_BASE}/{ig_id}/media", data=payload, timeout=60)
         data = r.json()
         if r.status_code not in (200, 201) or "id" not in data:
