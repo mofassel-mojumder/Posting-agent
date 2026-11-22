@@ -1,4 +1,4 @@
-"""Scheduler. Checks due posts, posts at the slot time, stops on first error.
+"""Scheduler. Checks due posts, posts at the slot time, never stops on one error.
 
 A post is due only within 30 minutes after its slot, so a late
 GitHub Actions cron still works, but a post is never posted hours late.
@@ -8,8 +8,10 @@ Rules, enforced here and nowhere else:
   - A destination already recorded in status.json is never posted again.
   - Delay between destinations: 60 to 120 seconds in live mode.
     In dry-run or test mode the delay is skipped so tests are fast.
-  - On the first failed or blocked destination, stop that post at once.
-    Do not try the next destination. Do not retry automatically.
+  - If a destination fails or is blocked, log it and keep going to the
+    next destination. Never stop the whole post on one error.
+    A failed destination is retried on the next pass (its status is not
+    in the skip list); a posted one is not retried.
   - A dry-run result is recorded as dry_run, never as posted.
 """
 import random
@@ -64,6 +66,7 @@ def _run_post(cfg, post):
     status = dict(post["status"])
     status.setdefault("destinations", {})
     done = status["destinations"]
+    failed = []
     for dest in DEST_ORDER:
         if dest not in post["destinations"]:
             continue
@@ -85,14 +88,14 @@ def _run_post(cfg, post):
         status["last_run"] = datetime.now(TZ).isoformat(timespec="seconds")
         inbox.save_status(post["id"], status)
         if result.status in ("failed", "blocked"):
-            # Stop on first error. No next destination, no automatic retry.
-            # Mark the post failed so later passes skip it too.
-            status["failed"] = True
-            status["error_destination"] = dest
-            status["error_detail"] = result.detail
-            inbox.save_status(post["id"], status)
-            return {"post_id": post["id"], "status": "stopped_on_error", "destination": dest, "detail": result.detail}
+            # One destination failed: log it and keep going to the next
+            # destination. Never stop the whole post on one error.
+            # A failed destination is retried on the next pass (its status
+            # is not in the skip list); a posted one is not retried.
+            failed.append({"destination": dest, "detail": result.detail})
         _delay(cfg)
+    if failed:
+        return {"post_id": post["id"], "status": "partial", "destinations": done, "failed": failed}
     return {"post_id": post["id"], "status": "done", "destinations": done}
 
 
