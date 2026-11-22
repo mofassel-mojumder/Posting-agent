@@ -1,0 +1,15 @@
+Google just showed you how much money it saved you. And most advertisers never opened the page.
+
+On November 12, Google added a new card to your account. The Invalid Traffic Overview Card. It sits on the Overview page, under Campaigns.
+
+It shows two numbers. First, estimated savings. The money Google says it saved you, by blocking invalid clicks before you were billed. Second, credited cost. The money Google gave back, for invalid activity found after billing.
+
+That is the first time you can see both in one place.
+
+Here is the catch. Saved does not mean earned. It is Google's estimate, not cash in your bank. And a big saving can also mean a big traffic problem. If your saving is high, check where those clicks came from. Check your search terms. Check your locations.
+
+A clean account saves little. Because there was little to block.
+
+Open the card today. Look at the two numbers. Then decide if your traffic is clean, or just filtered.
+
+Follow for more.
