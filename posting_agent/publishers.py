@@ -277,7 +277,9 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
             etag = r_part.headers.get("ETag") or r_part.headers.get("etag")
             if etag:
                 etags.append(etag)
-    if upload_token and len(instructions) > 1 and etags:
+    print(f"[linkedin] uploadToken={'<empty>' if not upload_token else upload_token[:20] + '...'} parts={len(instructions)} etags={len(etags)}")
+    if len(instructions) > 1 and etags:
+        print("[linkedin] calling finalizeUpload")
         r_fin = requests.post(
             f"{LINKEDIN_REST}/videos?action=finalizeUpload",
             headers=_linkedin_headers(token, rest=True),
@@ -292,16 +294,19 @@ def _upload_linkedin_video(token, author, media_path, thumbnail_path=None):
         )
         if r_fin.status_code not in (200, 201):
             raise RuntimeError(f"finalizeUpload HTTP {r_fin.status_code}: {r_fin.text[:300]}")
+        print(f"[linkedin] finalizeUpload OK ({r_fin.status_code})")
     from urllib.parse import quote
 
     video_ref = quote(video_urn, safe="")
-    for _ in range(60):
+    for i in range(60):
         r3 = requests.get(
             f"{LINKEDIN_REST}/videos/{video_ref}",
             headers=_linkedin_headers(token, rest=True),
             timeout=60,
         )
         data3 = r3.json()
+        if i == 0:
+            print(f"[linkedin] status poll 1: http={r3.status_code} status={data3.get('status')}")
         if r3.status_code in (200, 201) and data3.get("status") == "AVAILABLE":
             return video_urn
         if r3.status_code in (200, 201) and data3.get("status") in ("FAILED", "PROCESSING_FAILED"):
