@@ -342,6 +342,7 @@ def post_linkedin(cfg, post):
     try:
         media = None
         category = "NONE"
+        video_urn = None
         if post.get("media"):
             suffix = Path(post["media"]).suffix.lower()
             if suffix in IMAGE_EXTS:
@@ -350,10 +351,36 @@ def post_linkedin(cfg, post):
                 category = "IMAGE"
             elif suffix in VIDEO_EXTS:
                 video_urn = _upload_linkedin_video(token, author, post["media"], post.get("thumbnail"))
-                media = [{"status": "READY", "media": video_urn}]
                 category = "VIDEO"
             else:
                 return PublishResult(False, "failed", f"LinkedIn cannot post media type {suffix}")
+        if category == "VIDEO":
+            # Videos uploaded through the Videos API (/rest/videos) must be
+            # posted through the new Posts API (/rest/posts). The old UGC
+            # Posts API (/v2/ugcPosts) does not accept a video URN and
+            # rejects it with "contents is not owned by the author".
+            body = {
+                "author": author,
+                "commentary": caption,
+                "visibility": "PUBLIC",
+                "distribution": {
+                    "feedDistribution": "MAIN_FEED",
+                    "targetEntities": [],
+                    "thirdPartyDistributionChannels": [],
+                },
+                "content": {"media": {"id": video_urn}},
+                "lifecycleState": "PUBLISHED",
+                "isReshareDisabledByAuthor": False,
+            }
+            r = requests.post(
+                f"{LINKEDIN_REST}/posts", headers=_linkedin_headers(token, rest=True), json=body, timeout=60
+            )
+            data = r.json()
+            if r.status_code in (200, 201) and "id" in data:
+                post_id = data["id"]
+                url = f"https://www.linkedin.com/feed/update/{post_id}" if post_id.startswith("urn:li:share:") else "https://www.linkedin.com/feed/"
+                return PublishResult(True, "posted", f"LinkedIn id {post_id}", url)
+            return PublishResult(False, "failed", f"LinkedIn HTTP {r.status_code}: {json.dumps(data)[:300]}")
         body = {
             "author": author,
             "lifecycleState": "PUBLISHED",
