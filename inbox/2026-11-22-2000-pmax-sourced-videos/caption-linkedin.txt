@@ -1,0 +1,13 @@
+Sourced videos are now enabled by default for all new Performance Max campaigns. Google uses AI and automated crawling to find videos from sources you approve and add them to your asset groups.
+
+The sources: your social media profiles, your campaign's landing page, and your linked YouTube channel. Up to 10 crawled videos can be added to a single asset group.
+
+Google also says the setting may have been activated automatically on some existing campaigns as part of a recent platform update. So a campaign you set up without ever choosing this may now be using it.
+
+For a local service business, that is dangerous. An old shaky phone video. A video with the wrong price. A video for a service you no longer offer. Any of them can show as your ad, to people ready to hire you. And you still pay for every click.
+
+Before you launch, open the campaign settings. Go to Asset optimization. Check Sourced videos and Manage sources. Approve only the videos you actually want in an ad. Turn it off where you want only your own uploads.
+
+You control the video. Not Google.
+
+Follow for more.

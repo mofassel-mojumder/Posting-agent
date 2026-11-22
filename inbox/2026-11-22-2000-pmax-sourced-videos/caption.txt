@@ -1,0 +1,15 @@
+That old video on your Facebook page? Google just put it in your ad.
+
+Sourced videos are now on by default in every new Performance Max campaign. Google looks for videos you already posted. On social media. On your landing page. On your YouTube channel. And adds them to your ad.
+
+Up to ten videos in one asset group. You never uploaded them. You never picked them. Google picked them for you.
+
+And it may already be on in your old campaigns too. Google says some existing campaigns were switched on by a recent update.
+
+For a local service business, that is dangerous. An old shaky phone video. A video with the wrong price. A video for a service you no longer offer. Any of them can show as your ad, to people ready to hire you. And you still pay for every click.
+
+The fix takes two minutes. Open your Performance Max campaign. Go to Asset optimization. Check Sourced videos. And Manage sources. Approve only the videos you actually want in an ad. Turn it off where you want only your own uploads.
+
+You control the video. Not Google.
+
+Follow for more.
