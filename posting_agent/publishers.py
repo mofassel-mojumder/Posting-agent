@@ -142,6 +142,32 @@ def post_instagram(cfg, post):
         if r.status_code not in (200, 201) or "id" not in data:
             return PublishResult(False, "failed", f"Container HTTP {r.status_code}: {json.dumps(data)[:300]}")
         container_id = data["id"]
+        # Video (Reels) containers need time: Meta downloads the video
+        # from the public URL and transcodes it. Publishing immediately
+        # fails with "Object with ID ... does not exist" because the
+        # container is not ready yet. Poll until FINISHED, then publish.
+        if _is_video(post["media"]):
+            deadline = time.time() + 120
+            status = ""
+            while time.time() < deadline:
+                rs = requests.get(
+                    f"{GRAPH_BASE}/{container_id}",
+                    params={"fields": "status_code", "access_token": token},
+                    timeout=30,
+                )
+                ds = rs.json()
+                status = ds.get("status_code", "")
+                if status == "FINISHED":
+                    break
+                if status == "ERROR":
+                    return PublishResult(
+                        False, "failed", f"Container ERROR: {json.dumps(ds)[:300]}"
+                    )
+                time.sleep(5)
+            if status != "FINISHED":
+                return PublishResult(
+                    False, "failed", f"Container not FINISHED in 120s (last status: {status or 'unknown'})"
+                )
         r2 = requests.post(
             f"{GRAPH_BASE}/{ig_id}/media_publish",
             data={"creation_id": container_id, "access_token": token},
