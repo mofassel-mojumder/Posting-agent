@@ -1,0 +1,11 @@
+In Search campaigns, Google lets you set Google Search, Google search partners, and the Google Display Network to different priority levels. By default, all channels are set to High priority.
+
+High priority channels get budget first. Low priority channels get what is left. For a Low priority channel, you can set a daily budget allocation percentage. Zero percent means Google will not spend on that channel.
+
+So a Search campaign you thought ran only on Google may also be showing on Search Partner websites you never picked and never checked. A click from a partner site is not a click from a person searching on Google. It can be cheaper. It can look good in the report. But it rarely turns into a call or a booked job.
+
+The fix is one setting. Set Google Search to High. Set Search Partners to Low, with a small budget cap. Five percent to test it. Or zero percent to stop it.
+
+And check your report. Segment by Network. See what Search Partners actually brought you. Calls or just clicks. If it never brought a call, do not pay for it again.
+
+Follow for more.

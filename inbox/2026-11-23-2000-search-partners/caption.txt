@@ -1,0 +1,13 @@
+Your ad is showing on websites you never heard of. And you are paying for it.
+
+You run a Search campaign. You think your ad shows only on Google. It does not. It also shows on Search Partners. Other websites that show Google search ads. Sites you never picked. Sites you never checked. And they take your budget.
+
+By default, Google puts Search Partners on High priority. Same as Google Search. Same as Display. All High. So your money goes to partners first, before you even notice.
+
+For a local business, that is dangerous. A click from a partner site is not a click from a person searching on Google. It can be cheaper. It can look good in the report. But it rarely turns into a call. Or a booked job. And you still pay for it.
+
+The fix is one setting. Open your Search campaign. Set Google Search to High. Set Search Partners to Low. With a small budget cap. Five percent to test it. Or zero percent to stop it. Zero means Google will not spend on it.
+
+And check your report. Segment by Network. See what Search Partners actually brought you. Calls or just clicks. If it never brought a call, do not pay for it again.
+
+Follow for more.
