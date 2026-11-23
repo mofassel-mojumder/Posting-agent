@@ -1,0 +1,19 @@
+Your Search budget is about to leak into Display. And Google will not ask you first.
+
+You run a Search campaign. And the Display Network is turned on. Maybe you turned it on. Maybe it was on by default. Either way, your Search budget is shared.
+
+Today Google splits it in the background. You cannot see the split. You cannot change it.
+
+In February 2027, that split goes away. Google moves every Search campaign with Display on to a new system. Channel prioritization. Every channel starts as High priority. Search. Search partners. Display. All High.
+
+So Display can take more of your Search budget than it does today. And you will see the spend shift. Without anyone deciding it.
+
+For a local service business, that is real money. A plumber paying for clicks from people who were never searching. A roofer paying for banner views. No calls. Just spend.
+
+The fix is one setting. Open your Search campaign. Set the Display Network to Low priority. With a 50 percent daily budget allocation. That keeps the split you have today. Or turn Display off, if you never wanted it.
+
+And check one more thing. If your campaign uses Target impression share, Display stops serving there in February.
+
+Do this before February. Not after.
+
+Follow for more.

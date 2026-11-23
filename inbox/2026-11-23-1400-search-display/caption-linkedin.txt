@@ -1,0 +1,15 @@
+In February 2027, Google moves every Search campaign with Display Expansion turned on to channel prioritization. The current spend allocation setup goes away, and you may see a shift in channel spending between Google Search, search partners and the Google Display Network.
+
+Today Google splits the budget in the background. You cannot see the split. You cannot change it.
+
+Under the new system, every channel starts as High priority. Search. Search partners. Display. All High. So Display can take more of your Search budget than it does today.
+
+For a local service business, that is real money. A plumber paying for clicks from people who were never searching. A roofer paying for banner views. No calls. Just spend.
+
+The fix is one setting. Open your Search campaign. Set the Display Network to Low priority, with a 50 percent daily budget allocation. That keeps the split you have today. Or turn Display off, if you never wanted it.
+
+And check one more thing. If your campaign uses Target impression share, Display stops serving there in February.
+
+Do this before February. Not after.
+
+Follow for more.
